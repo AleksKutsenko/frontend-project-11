@@ -1,6 +1,9 @@
+import 'bootstrap';
 import i18next from 'i18next';
 import './style.scss';
-import app from './app.js';
+import resources from './locales/ruAndEnLocales.js';
+import watchedState from './view.js';
+import submitFormHandler from './handlers/submitFormHandler.js';
 
 const runApp = () => {
   const promise = new Promise((resolve) => {
@@ -9,29 +12,8 @@ const runApp = () => {
       lng: 'ru',
       debug: true,
       resources: {
-        ru: {
-          translation: {
-            validation: {
-              errors: {
-                notURL: 'Ссылка должна быть валидным URL',
-                existFeed: 'RSS уже существует',
-              },
-              isValid: 'RSS загружается',
-            },
-            loading: {
-              errors: {
-                networkErrror: 'Ошибка сети',
-                resourseError: 'Ресурс не содержит валидный RSS',
-              },
-              isLoaded: 'RSS успешно загружен',
-            },
-            content: {
-              feed: 'Фиды',
-              post: 'Посты',
-              view: 'Просмотр',
-            },
-          },
-        },
+        ru: resources.ru,
+        en: resources.en,
       },
     });
     resolve(i18nextInstance);
@@ -39,25 +21,30 @@ const runApp = () => {
   promise.then((i18nextInstance) => {
     const state = {
       i18n: i18nextInstance,
+      process: null,
       feedbackMessage: null,
-      validation: {
-        validateForm: null,
-        RSSurl: [],
-      },
+      validation: null,
       loadingRSS: {
         errors: [],
         feeds: [],
         posts: [],
+        resources: [],
         uiState: {
           viewedPostsId: [],
           currentModal: null,
-          activeFeedId: null,
+        },
+        updatingPosts: {
+          currentTimerID: null,
+          errorUpdating: null,
         },
       },
     };
     return state;
   })
-    .then((state) => app(state))
+    .then((state) => {
+      const watcher = watchedState(state);
+      submitFormHandler(watcher);
+    })
     .catch((e) => console.log(e, 'error in init i18next'));
 };
 

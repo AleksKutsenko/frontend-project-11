@@ -1,41 +1,46 @@
 import axios from 'axios';
 import _ from 'lodash';
 import parseRSS from '../parserRSS.js';
+import timer from './updateHandler.js';
 
 const handlerOfLoadingRSS = (state, url) => {
   const rssUrl = new URL(`https://allorigins.hexlet.app/get?disableCache=true&url=${url}`);
   axios.get(rssUrl.toString())
     .catch((e) => {
       state.loadingRSS.errors.push(e);
-      state.feedbackMessage = state.i18n.t('loading.errors.networkErrror');
-      console.log(e);
+      throw new Error(state.i18n.t('loading.errors.networkErrror'));
     })
     .then((response) => {
-      console.log(response);
-      console.log(state);
       const parsedResponse = parseRSS(response.data.contents);
-      console.log('after parse');
-      console.log(parsedResponse);
+      state.process = 'parsing';
       return parsedResponse;
     })
     .catch((e) => {
       if (e.message === 'Parsing RSS Error') {
-        state.feedbackMessage = state.i18n.t('loading.errors.resourseError');
+        throw new Error(state.i18n.t('loading.errors.resourseError'));
       }
+      throw new Error(e.message);
     })
     .then((parsedResponse) => {
-      console.log('start_id');
       const { feed, posts } = parsedResponse;
-      feed.id = _.uniqueId();
-      state.loadingRSS.feeds.push(feed);
-      console.log(parsedResponse.posts);
-      const newPosts = posts.forEach((post) => {
-        post.id = _.uniqueId();
-        post.feedId = feed.id;
+      const feedId = _.uniqueId();
+      state.loadingRSS.feeds = [{ ...feed, id: feedId }, ...state.loadingRSS.feeds];
+      const newPosts = posts.map((post) => {
+        const postId = _.uniqueId();
+        return { ...post, id: postId, feedId };
       });
-      state.loadingRSS.posts = [...state.loadingRSS.posts, ...newPosts];
-      state.loadingRSS.uiState.activeFeedId = feed.id;
-      console.log('last', state);
+      state.loadingRSS.posts = [...newPosts, ...state.loadingRSS.posts];
+      state.loadingRSS.resources.push({ feedId, url });
+      state.process = 'loaded';
+      state.feedbackMessage = state.i18n.t('loading.isLoaded');
+      state.loadingRSS.updatingPosts.errorUpdating = null;
+    })
+    .then(() => {
+      timer(state);
+      console.log('first timer go', state);
+    })
+    .catch((error) => {
+      state.feedbackMessage = error.message;
     });
 };
 
