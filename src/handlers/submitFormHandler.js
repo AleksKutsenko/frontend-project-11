@@ -7,31 +7,29 @@ const submitFormHandler = (state) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const value = formData.get('url');
+    const { resources } = state.loadingRSS;
 
-    validateForm(value, state)
-      .catch(({ errors }) => {
-        const [error] = errors;
-        throw new Error(error);
-      })
-      .catch((error) => {
-        state.validation = 'invalid';
-        const resources = state.loadingRSS.resources.map((resourсe) => resourсe.url);
-        if (resources.includes(value)) {
-          state.process = 'validation';
-          throw new Error(state.i18n.t('validation.errors.existFeed'));
-        }
-        throw new Error(error.message);
-      })
+    validateForm(value, resources)
       .then((url) => {
         state.validation = 'valid';
-        state.process = 'validation';
-        return url;
-      })
-      .then((url) => {
         handlerOfLoadingRSS(state, url);
       })
-      .catch((error) => {
-        state.feedbackMessage = error.message;
+      .catch((err) => {
+        state.process = 'error';
+        state.validation = 'invalid';
+        const { type } = err;
+        const [errorMessage] = err.errors;
+        switch (type) {
+          case 'url':
+          case 'min':
+            state.feedbackMessageKey = errorMessage;
+            break;
+          case 'notOneOf':
+            state.feedbackMessageKey = 'validation.errors.existFeed';
+            break;
+          default:
+            throw new Error(e.message);
+        }
       });
   });
 };
