@@ -10,6 +10,7 @@ const viewModalOpenHandler = (state) => {
   const buttons = document.querySelectorAll('[data-bs-toggle="modal"]');
   buttons.forEach((button) => button.addEventListener('click', (e) => {
     const postId = e.target.dataset.id;
+    state.loadingRSS.uiState.viewedPostsId.push(postId);
     state.loadingRSS.uiState.currentModal = postId;
   }));
 };
